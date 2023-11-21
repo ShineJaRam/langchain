@@ -6,6 +6,8 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.retrievers.multi_query import MultiQueryRetriever
+from langchain.chains import RetrievalQA
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 # Loader
 loader = PyPDFLoader("unsu.pdf")
@@ -26,12 +28,15 @@ embeddings_model = OpenAIEmbeddings()
 db = Chroma.from_documents(texts, embeddings_model)
 
 # Qusetion
-question = "아내가 먹고 싶어하는 음식은 무엇이야?"
-llm = ChatOpenAI(temperature=0)
+question = "pdf 자료를 읽고, 김첨지의 직업을 알려줘"
+llm = ChatOpenAI(streaming=True, temperature=0,callbacks=[StreamingStdOutCallbackHandler()])
 retriever_from_llm = MultiQueryRetriever.from_llm(
     retriever=db.as_retriever(), llm=llm
 )
 
 docs = retriever_from_llm.get_relevant_documents(query=question)
-print(len(docs))
-print(docs)
+
+qa_chain = RetrievalQA.from_chain_type(llm, retriever=db.as_retriever())
+result = qa_chain({"query": question})
+
+print(result)
